@@ -1,0 +1,50 @@
+---
+title: "Null Variables"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Null Variables}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+First, we load the necessary packages. 
+
+```{r warning = FALSE, message = FALSE}
+rm(list = ls())
+seed <- 1
+set.seed(seed)
+
+require(stringi)
+require(data.table)
+```
+
+Next, we load the dataset. This dataset can be generated using GitHub's Sailuh/Kaiaulu [causal_flaws.Rmd](https://github.com/sailuh/kaiaulu/blob/master/vignettes/causal_flaws.Rmd) notebook.
+
+```{r}
+dt <- fread("~/Desktop/kaiaulu/analysis/dv8/tse_cassandra/tse_cassandra-flaws_smells_vs_outcome_metrics.csv")
+```
+
+# Add Null Features
+
+We generate a replica column prefixed by `nv-`. The nv- columns have their values shufled across the rows, hence the null (random) naming to them.
+
+```{r}
+nv_dt <- copy(dt[,2:ncol(dt),with=FALSE])
+colnames(nv_dt) <- stringi::stri_c("nv-",colnames(nv_dt))
+nv_dt <- apply(nv_dt,2,sample)
+nv_dt <- cbind(dt,nv_dt)
+head(nv_dt)
+```
+
+To save, uncomment the following code line and execute where you wish to save it:
+
+```{r}
+#fwrite(nv_dt,"~/Downloads/project_nv_dt.csv")
+```
+
+
