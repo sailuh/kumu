@@ -1,0 +1,100 @@
+---
+title: "Boss Analysis"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Boss Analysis}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+```{r warning = FALSE, message = FALSE}
+rm(list = ls())
+seed <- 1
+set.seed(seed)
+
+require(kumu)
+require(stringi)
+require(data.table)
+```
+
+# Dataset 
+
+First we define the input dataset for Tetrad, and subsequently the output folder path.
+
+```{r}
+dt_path <- "~/Downloads/camel_1_6-flaws_smells_vs_outcome_metrics_no_filepath_deleted_columns.csv"
+output_folder_path <- "~/Downloads/causal_output/"
+
+data_flags <- data_io(dataset_path = dt_path,
+                         data_type = "continuous",
+                         column_delimiter = "comma",
+                         output_folder_path = output_folder_path,
+                         is_json_output = TRUE)
+```
+
+# Knowledge File
+
+```{r}
+knowledge_file_path <- "~/Downloads/knowledge_2.txt"
+knowledge_flags <- knowledge_file_path(knowledge_file_path)
+```
+
+# Causal Algorithm
+
+Next, we define the causal algorithm to be used in Tetrad, in this case BOSS.
+
+```{r}
+algorithm_flags <- algorithm_boss(num_starts = 1,
+                                  time_lag = 0,
+                                  allow_internal_randomness = FALSE,
+                                  use_bes = FALSE)
+```
+
+# Score 
+
+We subsequently choose the score metric, in this case Sem BIC.
+
+```{r}
+score_flags <- score_sem_bic(penalty_discount = 1, 
+                             sem_bic_rule = 1, 
+                             sem_bic_structure_prior = 0, 
+                             precompute_covariances = TRUE)
+```
+
+# Bootstrapping
+
+Lastly, we choose the bootstrapping criteria.
+
+```{r}
+bootstrapping_flags <- bootstrapping(number_resampling=0,
+                                     percent_resample_size = 100,
+                                     seed = 32, 
+                                     add_original_dataset = TRUE,
+                                     resampling_with_replacement = TRUE,
+                                     save_bootstrap_graphs = FALSE)
+
+```
+
+# Tetrad Command
+
+```{r}
+tetrad_path <- "~/Downloads/causal-cmd-1.10.0-jar-with-dependencies.jar"
+tetrad(tetrad_cmd_path = tetrad_path,
+       data_flags = data_flags, 
+   #    knowledge_flags = knowledge_flags,
+       algorithm_flags = algorithm_flags,
+       score_flags = score_flags,
+       bootstrapping_flags = bootstrapping_flags)
+```
+
+# Debug
+
+```{r}
+stringi::stri_c(c(tetrad_path,data_flags,knowledge_flags,algorithm_flags,score_flags,bootstrapping_flags),collapse = " ")
+```
+

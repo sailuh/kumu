@@ -6,7 +6,7 @@
 
 ## Overview
 
-Kumu is an R package to facilitate data transformations and causal modeling. 
+Kumu is an R package to facilitate data transformations and causal modeling. This project heavily relies on [Tetrad-CMD](https://github.com/cmu-phil/tetrad).
 
 ## Installation 
 

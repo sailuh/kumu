@@ -2,7 +2,7 @@ Package: kumu
 Type: Package
 Title: Kumu
 Version: 0.0.0.9000
-Description: Kumu is an R package to facilitate causal analysis in R
+Description: Kumu is an R package to facilitate causal analysis
 Authors@R: c(
     person('Carlos', 'Paradis', role = c('aut', 'cre'),
       email = 'cvas@hawaii.edu',
