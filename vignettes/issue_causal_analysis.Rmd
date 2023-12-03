@@ -658,10 +658,6 @@ g_viz %>% visOptions(highlightNearest = TRUE) %>% visInteraction(navigationButto
 ```
 
 
-```{r}
-find_cycles(g)
-```
-
 ## Sub-Graphs of Effort Variables and Parents
 
 ```{r}
@@ -678,105 +674,6 @@ nodes_n[node %in% c("mis_link","mis_link")]$color <- Blue2DarkRed12Steps[3]
 nodes_n[node %in% c("code_dev","code_dev2")]$color <- Blue2DarkRed12Steps[7]
 nodes_n[node %in% c("churn","churn2")]$color <- Blue2DarkRed12Steps[8]
 nodes_n[node %in% c("commit","commit2")]$color <- Blue2DarkRed12Steps[9]
-
-g_viz <- visIgraph(g,
-          randomSeed = 1)#,
-          #layout = "layout_with_dh")
-#vis_graph <- toVisNetworkData(graph)
-#visNetwork(nodes = vis_graph$nodes, edges = vis_graph$edges,randomSeed = 1,
-#           height = "600px", width = "100%") %>% 
-g_viz %>% visOptions(highlightNearest = TRUE) %>% visInteraction(navigationButtons = TRUE)#  %>% 
-  #visHierarchicalLayout()
-  #visInteraction(navigationButtons = TRUE,keyboard = TRUE, tooltipDelay = 0 ) 
-
-#visSave(g_viz,"~/Downloads/openssl_causal_graph_with_cycles.html")
-```
-
-```{r}
-find_cycles(g)
-```
-
-
-## Sub-Graphs of Graph 1-PNEF Trimmed 
-
-The following sub-graphs focus on a dependent effort variable of interest at a time. These are not separate causal searches. To define these graphs, we first identify the dependent variable of interest in both time steps (e.g. churn and churn2), then include all nodes that connect to them (regardless of edge direction). Finally, we also include all edges among these variables. The interest here is just to focus on the causal effect associated to the dependent variables we care about to facilitate our interpretation.
-
-### Churn and Churn 2
-
-```{r Churn and Churn 2}
-
-neighbor_edges <- edges[from %in% c("churn","churn2") | to %in% c("churn","churn2")]
-neighbors <- unique(c(neighbor_edges$from,neighbor_edges$to))
-edges_n<- edges[from %in% neighbors & to %in% neighbors]
-nodes_n <- nodes[node %in% unique(c(edges_n$from,edges_n$to))]
-
-
-g <- igraph::graph_from_data_frame(d=edges_n, 
-                      directed = TRUE, 
-                      vertices = nodes_n)
-
-g_viz <- visIgraph(g,
-          randomSeed = 1)#,
-          #layout = "layout_with_dh")
-#vis_graph <- toVisNetworkData(graph)
-#visNetwork(nodes = vis_graph$nodes, edges = vis_graph$edges,randomSeed = 1,
-#           height = "600px", width = "100%") %>% 
-g_viz %>% visOptions(highlightNearest = TRUE) %>% visInteraction(navigationButtons = TRUE)#  %>% 
-  #visHierarchicalLayout()
-  #visInteraction(navigationButtons = TRUE,keyboard = TRUE, tooltipDelay = 0 ) 
-
-#visSave(g_viz,"~/Downloads/openssl_causal_graph_with_cycles.html")
-```
-
-```{r}
-find_cycles(g)
-```
-
-### Commit and Commit 2
-
-```{r Commit and Commit 2}
-
-neighbor_edges <- edges[from %in% c("commit","commit2") | to %in% c("commit","commit2")]
-neighbors <- unique(c(neighbor_edges$from,neighbor_edges$to))
-edges_n<- edges[from %in% neighbors & to %in% neighbors]
-nodes_n <- nodes[node %in% unique(c(edges_n$from,edges_n$to))]
-
-
-
-g <- igraph::graph_from_data_frame(d=edges_n, 
-                      directed = TRUE, 
-                      vertices = nodes_n)
-
-g_viz <- visIgraph(g,
-          randomSeed = 1)#,
-          #layout = "layout_with_dh")
-#vis_graph <- toVisNetworkData(graph)
-#visNetwork(nodes = vis_graph$nodes, edges = vis_graph$edges,randomSeed = 1,
-#           height = "600px", width = "100%") %>% 
-g_viz %>% visOptions(highlightNearest = TRUE) %>% visInteraction(navigationButtons = TRUE)#  %>% 
-  #visHierarchicalLayout()
-  #visInteraction(navigationButtons = TRUE,keyboard = TRUE, tooltipDelay = 0 ) 
-
-#visSave(g_viz,"~/Downloads/openssl_causal_graph_with_cycles.html")
-```
-
-```{r}
-find_cycles(g)
-```
-
-### Code Dev and Code Dev 2
-
-```{r Code Dev and Code Dev 2}
-
-neighbor_edges <- edges[from %in% c("code_dev","code_dev2") | to %in% c("code_dev","code_dev2")]
-neighbors <- unique(c(neighbor_edges$from,neighbor_edges$to))
-edges_n<- edges[from %in% neighbors & to %in% neighbors]
-nodes_n <- nodes[node %in% unique(c(edges_n$from,edges_n$to))]
-
-
-g <- igraph::graph_from_data_frame(d=edges_n, 
-                      directed = TRUE, 
-                      vertices = nodes_n)
 
 g_viz <- visIgraph(g,
           randomSeed = 1)#,
