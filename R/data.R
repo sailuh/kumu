@@ -13,12 +13,14 @@
 #' @param data_type the type of data
 #' @param column_delimiter how columns are defined in the dataset_path file
 #' @param output_folder_path Output directory
+#' @param filename File name where the graph will be stored
 #' @param is_json_output Write out graph as json.
 #' @export
 data_io <- function(dataset_path,
                     data_type = "continuous",
                     column_delimiter = "comma",
                     output_folder_path,
+                    filename,
                     is_json_output){
 
   dataset_path <- path.expand(dataset_path)
@@ -31,7 +33,9 @@ data_io <- function(dataset_path,
               "--delimiter",
               column_delimiter,
               "--out",
-              output_folder_path)
+              output_folder_path,
+             "--prefix",
+             filename)
 
   if(is_json_output){
     flags <- c(flags,"--json-graph")

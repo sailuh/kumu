@@ -9,6 +9,7 @@ data_io(
   data_type = "continuous",
   column_delimiter = "comma",
   output_folder_path,
+  filename,
   is_json_output
 )
 }
@@ -20,6 +21,8 @@ data_io(
 \item{column_delimiter}{how columns are defined in the dataset_path file}
 
 \item{output_folder_path}{Output directory}
+
+\item{filename}{File name where the graph will be stored}
 
 \item{is_json_output}{Write out graph as json.}
 }

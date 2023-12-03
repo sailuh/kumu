@@ -10,6 +10,7 @@ bootstrapping(
   seed,
   add_original_dataset,
   resampling_with_replacement,
+  resampling_ensemble,
   save_bootstrap_graphs
 )
 }
@@ -23,6 +24,9 @@ bootstrapping(
 \item{add_original_dataset}{Yes, if adding the original dataset as another bootstrapping}
 
 \item{resampling_with_replacement}{Yes, if sampling with replacement (bootstrapping)}
+
+\item{resampling_ensemble}{Ensemble method: Preserved (1), Highest (2), Majority (3).
+Use any other number to not include the flag.}
 
 \item{save_bootstrap_graphs}{Yes if individual bootstrapping graphs should be saved}
 }

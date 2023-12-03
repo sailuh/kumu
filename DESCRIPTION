@@ -29,4 +29,4 @@ Imports:
 VignetteBuilder: knitr
 URL: https://github.com/sailuh/kumu
 BugReports: https://github.com/sailuh/kumu/issues
-RoxygenNote: 7.0.2
+RoxygenNote: 7.2.3

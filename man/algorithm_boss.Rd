@@ -6,28 +6,32 @@
 \usage{
 algorithm_boss(
   num_starts = 1,
+  num_threads = 1,
   time_lag = 0,
-  allow_internal_randomness = FALSE,
-  use_bes = FALSE
+  use_bes = FALSE,
+  use_data_order = TRUE,
+  verbose = FALSE
 )
 }
 \arguments{
 \item{num_starts}{The number of times the algorithm should be re-run
 from different random starting permutations. The model with the most
-optimal BIC score will be selected. Random after the first. Defaults to 1.}
+optimal BIC score will be selected. Random after the first. Defaults to 1. Integer.}
+
+\item{num_threads}{The number of threads (>= 1) to use for the search. Integer.}
 
 \item{time_lag}{This creates a time-series model automatically with a certain
 number of lags. Defaults to zero.}
 
-\item{allow_internal_randomness}{If true, the algorithm allow the algorithm to
-use certain heuristic random steps. This can improve performance,
-but may make the algorithm non-deterministic.}
-
-\item{use_bes}{True if the final BES (Backward Equivalence Search) step is
+\item{use_bes}{TRUE if the final BES (Backward Equivalence Search) step is
 used from the GES (Greedy Equivalence Search) algorithm.
 This step is needed for correctness but for large models,
 since usually nearly all edges are oriented in the CPDAG,
-it is heurically not needed.}
+it is heuristically not needed.}
+
+\item{use_data_order}{TRUE just in case data variable order should be used for the first initial permutation.}
+
+\item{verbose}{TRUE if verbose output should be printed or logged}
 }
 \description{
 Compose the flags of the BOSS algorithm

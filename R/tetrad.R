@@ -34,6 +34,8 @@ tetrad <- function(tetrad_cmd_path,
 
   out <- system2(command = "java",
           args = c("-jar",
+                   "-Xms4096M",
+                   "-Xmx6144M",
                    tetrad_cmd_path,
                    data_flags,
                    knowledge_flags,

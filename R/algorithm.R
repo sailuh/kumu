@@ -27,17 +27,17 @@
 #'
 #' @param num_starts The number of times the algorithm should be re-run
 #' from different random starting permutations. The model with the most
-#' optimal BIC score will be selected. Random after the first. Defaults to 1.
+#' optimal BIC score will be selected. Random after the first. Defaults to 1. Integer.
+#' @param num_threads The number of threads (>= 1) to use for the search. Integer.
 #' @param time_lag This creates a time-series model automatically with a certain
 #' number of lags. Defaults to zero.
-#' @param allow_internal_randomness If true, the algorithm allow the algorithm to
-#' use certain heuristic random steps. This can improve performance,
-#' but may make the algorithm non-deterministic.
-#' @param use_bes  True if the final BES (Backward Equivalence Search) step is
+#' @param use_bes  TRUE if the final BES (Backward Equivalence Search) step is
 #' used from the GES (Greedy Equivalence Search) algorithm.
 #' This step is needed for correctness but for large models,
 #' since usually nearly all edges are oriented in the CPDAG,
-#' it is heurically not needed.
+#' it is heuristically not needed.
+#' @param use_data_order TRUE just in case data variable order should be used for the first initial permutation.
+#' @param verbose TRUE if verbose output should be printed or logged
 #'
 #' @references Dimitris Margaritis and Sebastian Thrun. Bayesian network induction via local neighborhoods. Advances in neural information processing systems, 12, 1999.
 #' @references Raskutti, G., & Uhler, C. (2018). Learning directed acyclic graph models based on sparsest permutations. Stat, 7(1), e183.
@@ -47,15 +47,11 @@
 #'
 #' @export
 algorithm_boss <- function(num_starts = 1,
-                    time_lag = 0,
-                    allow_internal_randomness = FALSE,
-                    use_bes = FALSE){
-
-  if(allow_internal_randomness){
-    allow_internal_randomness <- "--allowInternalRandomness"
-  }else{
-    allow_internal_randomness <- ""
-  }
+                           num_threads = 1,
+                           time_lag = 0,
+                           use_bes = FALSE,
+                           use_data_order = TRUE,
+                           verbose = FALSE){
 
   if(use_bes){
     use_bes <- "--useBes"
@@ -63,14 +59,126 @@ algorithm_boss <- function(num_starts = 1,
     use_bes <- ""
   }
 
+  if(use_data_order){
+    use_data_order <- "--useDataOrder"
+  }else{
+    use_data_order <- ""
+  }
+
+  if(verbose){
+    use_bes <- "--verbose"
+  }else{
+    verbose <- ""
+  }
+
   flags <- c( "--algorithm",
               "boss",
               "--numStarts",
-              num_starts,
+              as.integer(num_starts),
+              "--numThreads",
+              as.integer(num_threads),
               "--timeLag",
-              time_lag,
-              allow_internal_randomness,
-              use_bes)
+              as.integer(time_lag),
+              use_bes,
+              use_data_order,
+              verbose)
+
+  return(flags)
+
+}
+
+
+#' Algorithm FGES
+#'
+#' Compose the flags of the FGES algorithm
+#'
+#' Implements the Fast Greedy Equivalence Search (FGES) algorithm.
+#' This is an implementation of the Greedy Equivalence Search algorithm,
+#' originally due to Chris Meek but developed significantly by Max Chickering.
+#' FGES uses with some optimizations that allow it to scale accurately to
+#' thousands of variables accurately for the sparse case. The reference for FGES is this:
+#' The reference for Chickering's GES is this:
+#' Chickering (2002) "Optimal structure identification with greedy search"
+#' Journal of Machine Learning Research.
+#' FGES works for the continuous case, the discrete case,
+#' and the mixed continuous/discrete case, so long as a BIC score is available
+#' for the type of data in question.
+#' To speed things up, it has been assumed that variables X and Y with
+#' zero correlation do not correspond to edges in the graph. This is a
+#' restricted form of the heuristic speedup assumption, something GES does not assume.
+#' This heuristic speedup assumption needs to be explicitly turned on using setHeuristicSpeedup(true).
+#' Also, edges to be added or remove from the graph in the forward or backward phase,
+#' respectively are cached, together with the ancillary information needed to do the
+#' additions or removals, to reduce rescoring.
+#' A number of other optimizations were also. See code for details.
+#' This class is configured to respect knowledge of forbidden and required edges,
+#' including knowledge of temporal tiers.
+#' For more details, see: https://www.phil.cmu.edu/tetrad-javadocs/7.6.0/edu/cmu/tetrad/search/Fges.html
+#'
+#' @param max_degree Integer. The maximum degree of the graph (min = -1)
+#' from different random starting permutations. The model with the most
+#' optimal BIC score will be selected. Random after the first. Defaults to 1.
+#' @param time_lag This creates a time-series model automatically with a certain
+#' number of lags. Defaults to zero.
+#' @param faithfulness_assumed TRUE if (one edge) faithfulness should be assumed
+#' @param meek_verbose TRUE if verbose output for Meek rule applications should be printed or logged
+#' @param parallelized TRUE if the search should be parallelized
+#' @param symmetric_first_step TRUE if the first step step for FGES should do scoring for both X->Y and Y->X
+#' @param verbose TRUE if verbose output should be printed or logged
+#'
+#' @references Ramsey, J., Glymour, M., Sanchez-Romero, R., & Glymour, C. (2017). A million variables and more: the fast greedy equivalence search algorithm for learning high-dimensional graphical causal models, with an application to functional magnetic resonance images. International journal of data science and analytics, 3, 121-129.
+#'
+#'
+#' @export
+algorithm_fges <- function(max_degree = 1000,
+                           time_lag = 0,
+                           faithfulness_assumed = FALSE,
+                           meek_verbose = FALSE,
+                           parallelized = FALSE,
+                           symmetric_first_step = FALSE,
+                           verbose = FALSE){
+
+  if(faithfulness_assumed){
+    faithfulness_assumed <- "--faithfulnessAssumed"
+  }else{
+    faithfulness_assumed <- ""
+  }
+
+  if(meek_verbose){
+    meek_verbose <- "--meekVerbose"
+  }else{
+    meek_verbose <- ""
+  }
+
+  if(parallelized){
+    parallelized <- "--parallelized"
+  }else{
+    parallelized <- ""
+  }
+
+  if(symmetric_first_step){
+    symmetric_first_step <- "--symmetricFirstStep"
+  }else{
+    symmetric_first_step <- ""
+  }
+
+  if(verbose){
+    verbose <- "--verbose"
+  }else{
+    verbose <- ""
+  }
+
+  flags <- c( "--algorithm",
+              "fges",
+              "--maxDegree",
+              as.integer(max_degree),
+              "--timeLag",
+              as.integer(time_lag),
+              faithfulness_assumed,
+              meek_verbose,
+              parallelized,
+              symmetric_first_step,
+              verbose)
 
   return(flags)
 
