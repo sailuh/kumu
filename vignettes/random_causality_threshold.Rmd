@@ -1,0 +1,286 @@
+---
+title: "Identifying Threshold to filter Causal Edges due to Chance"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Identifying Threshold to filter Causal Edges due to Chance}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r warning = FALSE, message = FALSE}
+rm(list = ls())
+seed <- 1
+set.seed(seed)
+
+require(kumu)
+require(stringi)
+require(data.table)
+require(jsonlite)
+require(igraph)
+require(visNetwork)
+```
+
+# Introduction
+
+The goal of this notebook is to identify a threshold by which we can determine causal edges that occur due to chance within a reasonable confidence interval. We begin by loading the dataset produced by Kaiaulu, excluding the filepaths column. Here's a sample of how the data looks like:
+
+```{r}
+dt <- fread("~/Downloads/camel_1_6-flaws_smells_vs_outcome_metrics_no_filepath_deleted_columns.csv")
+head(dt)
+```
+
+# Adding Null Variables
+
+Next, we introduce null variables to this dataset. The idea here is that we duplicate all variables, and on the duplicated variable which we prefix by `nv-*`, the rows are shuffled randomly. Here's a sample after introducing null variables:
+
+```{r}
+nv_dt <- copy(dt)
+colnames(nv_dt) <- stringi::stri_c("nv-",colnames(nv_dt))
+nv_dt <- apply(nv_dt,2,sample)
+nv_dt <- cbind(dt,nv_dt)
+head(nv_dt)
+```
+# BOSS Bootstrapped Causal Search
+
+The next step is to conduct causal search on this dataset with null variables. We are interested in observing if the model claims causality between our variables of interest and the generated random variables to derive a threshold. First, we store the null variable dataset so it can be passed to Tetrad-CMD:
+
+```{r}
+null_dt_path <- "~/projects/kumu_data/camel_1_6/null_camel_1_6.csv"
+fwrite(nv_dt,null_dt_path)
+```
+
+# Dataset 
+
+First we define the input dataset for Tetrad, and subsequently the output folder path.
+
+```{r}
+dt_path <- null_dt_path
+output_folder_path <- "~/projects/kumu_data/camel_1_6"
+filename <- "null_camel_1_6"
+filepath <- stringi::stri_c(file.path(output_folder_path,filename),"_graph.json")
+
+data_flags <- data_io(dataset_path = dt_path,
+                         data_type = "continuous",
+                         column_delimiter = "comma",
+                         output_folder_path = output_folder_path,
+                         filename = filename,
+                         is_json_output = TRUE)
+```
+
+# Knowledge File
+
+```{r}
+#knowledge_file_path <- "~/Downloads/knowledge_2.txt"
+knowledge_file_path <- "~/projects/kumu_data/null_variable_mike_knowledge_box.txt"
+knowledge_flags <- knowledge_file_path(knowledge_file_path)
+```
+
+# Causal Algorithm
+
+Next, we define the causal algorithm to be used in Tetrad, in this case BOSS.
+
+```{r}
+algorithm_flags <- algorithm_boss(num_starts = 1,
+                                  time_lag = 0,
+                                  allow_internal_randomness = FALSE,
+                                  use_bes = FALSE)
+```
+
+# Score 
+
+We subsequently choose the score metric, in this case Sem BIC.
+
+```{r}
+score_flags <- score_sem_bic(penalty_discount = 2, 
+                             sem_bic_rule = 1, 
+                             sem_bic_structure_prior = 0, 
+                             precompute_covariances = TRUE)
+```
+
+# Bootstrapping
+
+Lastly, we choose the bootstrapping criteria.
+
+
+```{r}
+bootstrapping_flags <- bootstrapping(number_resampling=10000,
+                                     percent_resample_size = 100,
+                                     seed = 32, 
+                                     add_original_dataset = TRUE,
+                                     resampling_with_replacement = TRUE,
+                                     resampling_ensemble = 1,
+                                     save_bootstrap_graphs = FALSE)
+
+```
+
+# Tetrad Command
+
+```{r results='hide', message = FALSE, echo = FALSE}
+tetrad_path <- "~/Downloads/causal-cmd-1.10.0-jar-with-dependencies.jar"
+tetrad(tetrad_cmd_path = tetrad_path,
+       data_flags = data_flags, 
+       #knowledge_flags = knowledge_flags,
+       algorithm_flags = algorithm_flags,
+       score_flags = score_flags,
+       bootstrapping_flags = bootstrapping_flags)
+```
+As a curiosity, all the Tetrad function is doing here is generating the command to call the Tetrad CMD Jar:
+
+```{r}
+stringi::stri_c(c(tetrad_path,data_flags,knowledge_flags,algorithm_flags,score_flags,bootstrapping_flags),collapse = " ")
+```
+# Read Graph 
+
+We now have our causal bootstrap graph as a .json file, which is output by Tetrad. Let's parse it into a tabular format to work on it:
+
+The nodes contain all our variables and null variables. In the off_chance a variable does not have any edge to it, this table allow us to still show it on the graph, as it would not appear on the "edge list" table.
+
+```{r}
+graph <- parse_graph(filepath)
+graph[["nodes"]]
+```
+Next is the edgeset table output by tetrad. This table contains all the edges. Because we are performing multiple executions, each with a sample of the full dataset (as we are using a "bootstrap" approach), the probabilities represented here are the "ensemble" of all edges formed on each execution. In this Notebook, the preserved ensemble was used.
+
+```{r}
+graph[["edgeset"]]
+```
+Lastly, we can examine the counts of each type of edge formed on each subgraph via the edge_type_probabilities table. Since the edgeset table probability already sums the probabilities from this table for every node pair, this information is presented here only for qualitative inspection, but it is not currently used in the subsequent steps.
+
+```{r}
+graph[["edge_type_probabilities"]]
+```
+# Deriving a Threshold
+
+As stated at the start of the notebook, our interest is to derive a threshold for the final causal search, using the information of this bootstrapped causal search between the actual variables, and the random variables. Since our interest is to derive the edgelist this threshold from edges between the actual variables and the null variables, our first step is to subset the table of `edgeset` to contain only the edge pairs that include null variables. A sample is shown below of the table where at least one of the two nodes is nv:
+
+```{r}
+nv_edges <- data.table::copy(graph[["edgeset"]])
+is_node1_nv <- stringi::stri_detect_regex(nv_edges$node1_name,pattern = "nv-")
+is_node2_nv <- stringi::stri_detect_regex(nv_edges$node2_name,pattern = "nv-")
+nv_edges <- nv_edges[is_node1_nv | is_node2_nv]
+head(nv_edges)
+```
+Next, we can derive a no_edge probability by subtracting 1 from the `probability` value. 
+
+```{r}
+nv_edges$no_edge <- 1 - nv_edges$probability 
+```
+
+Our goal then is to identify the first percentile value of the no edge probability, i.e. the 1st percentile NoEdge Frequency value (1PNEF):
+
+```{r}
+pnef_1 <- quantile(nv_edges$no_edge,probs=0.01)
+pnef_1
+```
+
+## Applying 1PNEF 
+
+With the 1PNEF threshold, we next perform a bootstrap search using only the original variables. Our interest is to derive causal edges, observe their probabilities, and filter them using the 1PNEF to derive the number of edges the causal graph should have. Note the Knowledge Box is also utilized here:
+
+
+```{r}
+dt_path <- "~/Downloads/camel_1_6-flaws_smells_vs_outcome_metrics_no_filepath_deleted_columns.csv"
+output_folder_path <- "~/projects/kumu_data/camel_1_6"
+filename <- "bootstrap_causal_graph_camel_1_6"
+filepath <- stringi::stri_c(file.path(output_folder_path,filename),"_graph.json")
+
+data_flags <- data_io(dataset_path = dt_path,
+                         data_type = "continuous",
+                         column_delimiter = "comma",
+                         output_folder_path = output_folder_path,
+                         filename = filename,
+                         is_json_output = TRUE)
+
+knowledge_file_path <- "~/projects/kumu_data/mike_knowledge_box.txt"
+knowledge_flags <- knowledge_file_path(knowledge_file_path)
+
+algorithm_flags <- algorithm_boss(num_starts = 1,
+                                  time_lag = 0,
+                                  allow_internal_randomness = FALSE,
+                                  use_bes = FALSE)
+
+score_flags <- score_sem_bic(penalty_discount = 1, 
+                             sem_bic_rule = 1, 
+                             sem_bic_structure_prior = 0, 
+                             precompute_covariances = TRUE)
+
+bootstrapping_flags <- bootstrapping(number_resampling=10000,
+                                     percent_resample_size = 100,
+                                     seed = 32, 
+                                     add_original_dataset = TRUE,
+                                     resampling_with_replacement = TRUE,
+                                     resampling_ensemble = 1,
+                                     save_bootstrap_graphs = FALSE)
+
+tetrad_path <- "~/Downloads/causal-cmd-1.10.0-jar-with-dependencies.jar"
+tetrad(tetrad_cmd_path = tetrad_path,
+       data_flags = data_flags, 
+   #    knowledge_flags = knowledge_flags,
+       algorithm_flags = algorithm_flags,
+       score_flags = score_flags,
+       bootstrapping_flags = bootstrapping_flags)
+```
+
+# Read Graph 
+
+Again, we can read the causal graph tables:
+
+```{r}
+graph <- parse_graph(filepath)
+graph[["nodes"]]
+```
+
+```{r}
+graph[["edgeset"]]
+```
+
+```{r}
+graph[["edge_type_probabilities"]]
+```
+We create the no edge probability of the new graph, and apply our 1PNEF threshold derived from the null variable graph to filter it:
+
+```{r}
+edges <- graph[["edgeset"]]
+edges$no_edge <- 1 - edges$probability 
+edges_1pnef <- edges[no_edge <= pnef_1]
+```
+
+The threshold filters a total of `r nrow(edges) - nrow(edges_1pnef)` edges, resulting in the following total number of edges in the final graph, which we call the `NumEdges1PNEF`. 
+
+```{r}
+num_edges_pnef_1 <- nrow(edges_1pnef)
+```
+
+We then can use `NumEdges1PNEF` on the final execution with PD to adjust its penalty score in the `boss_analysis.Rmd` Notebook, until we derive the same number of edges within a 5% interval. 
+
+# Graph Visualization
+
+The `NumEdges1PNEF` is used on the `boss_analysis.Rmd` Notebook. Here, we display the causal graph without the null variables from which we derived the 92 causal graphs for inspection. Note the values displayed on the edges are the `probability` value (i.e. the probability of "edge"). We therefore expect to only have edges whose weight are greater than 1-1PNEF.
+
+```{r}
+nodes <- data.table::copy(graph[["nodes"]])
+colnames(nodes) <- "node"
+
+#edges <- edges_1pnef[,.(from=node1_name,to=node2_name,value=probability,weight=probability,label=probability)]
+edges <- edges_1pnef[,.(from=node1_name,to=node2_name,weight=probability,label=probability)]
+```
+
+```{r}
+g_viz <- igraph::graph_from_data_frame(d=edges, 
+                      directed = TRUE, 
+                      vertices = nodes)
+
+g_viz <- visIgraph(g_viz,
+          randomSeed = 1)#,
+          #layout = "layout_with_dh")
+#vis_graph <- toVisNetworkData(graph)
+#visNetwork(nodes = vis_graph$nodes, edges = vis_graph$edges,randomSeed = 1,
+#           height = "600px", width = "100%") %>% 
+g_viz %>% visOptions(highlightNearest = TRUE) %>% visInteraction(navigationButtons = TRUE)#  %>% 
+  #visHierarchicalLayout()
+  #visInteraction(navigationButtons = TRUE,keyboard = TRUE, tooltipDelay = 0 ) 
+```
+
