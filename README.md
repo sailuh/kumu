@@ -23,3 +23,22 @@ Kumu has been tested on OS X and Ubuntu. For Windows and other OS users, try [Vi
 ## Stay up-to-date
 
  * Read the [NEWS file](https://github.com/sailuh/kumu/blob/master/NEWS.md).
+ 
+## How to cite Kumu 
+
+If you are using Kumu in your research, please cite the following work: 
+
+```
+@article{Paradis:2024,
+title = {A socio-technical perspective on software vulnerabilities: A causal analysis},
+journal = {Information and Software Technology},
+volume = {176},
+pages = {107553},
+year = {2024},
+issn = {0950-5849},
+doi = {https://doi.org/10.1016/j.infsof.2024.107553},
+url = {https://www.sciencedirect.com/science/article/pii/S0950584924001587},
+author = {Carlos Paradis and Rick Kazman and Mike Konrad},
+keywords = {Software vulnerabilities, Socio-technical analysis, Causal modeling}
+}
+```
