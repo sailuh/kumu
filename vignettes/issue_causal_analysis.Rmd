@@ -304,6 +304,7 @@ We then set the output file configuration.
 ```{r}
 dt_path <- nv_lag_dt_path
 output_folder_path <- "~/projects/kumu_data/analysis/openssl/null_search"
+#filename <- "fges_bootstrap_null_search_500_runs_nv_binary_indicators"
 filename <- "boss_bootstrap_null_search_1000_runs_nv_binary_indicators"
 filepath <- stringi::stri_c(file.path(output_folder_path,filename),"_graph.json")
 ```
